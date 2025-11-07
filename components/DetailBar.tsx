@@ -1,10 +1,9 @@
+import { Box, Modal, Tooltip } from '@mantine/core'
 import { MonitorState, MonitorTarget } from '@/types/config'
-import { getColor } from '@/util/color'
-import { Box, Tooltip, Modal } from '@mantine/core'
-import { useResizeObserver } from '@mantine/hooks'
 import { useState } from 'react'
-const moment = require('moment')
-require('moment-precise-range-plugin')
+import useResizeObserver from '@react-hook/resize-observer'
+import moment from 'moment'
+import { getColor } from '@/util/color'
 
 export default function DetailBar({
   monitor,
@@ -25,17 +24,18 @@ export default function DetailBar({
   const uptimePercentBars = []
 
   const currentTime = Math.round(Date.now() / 1000)
-  const montiorStartTime = state.incident[monitor.id][0].start[0]
+  const monitorStartTime = state.incident[monitor.id][0].start[0]
 
   const todayStart = new Date()
-  todayStart.setHours(0, 0, 0, 0)
+  todayStart.setHours(todayStart.getHours(), 0, 0, 0)
 
-  for (let i = 89; i >= 0; i--) {
-    const dayStart = Math.round(todayStart.getTime() / 1000) - i * 86400
-    const dayEnd = dayStart + 86400
+  // Changed to 24-hour view
+  for (let i = 23; i >= 0; i--) {
+    const hourStart = Math.round(todayStart.getTime() / 1000) - i * 3600
+    const hourEnd = hourStart + 3600
 
-    const dayMonitorTime = overlapLen(dayStart, dayEnd, montiorStartTime, currentTime)
-    let dayDownTime = 0
+    const hourMonitorTime = overlapLen(hourStart, hourEnd, monitorStartTime, currentTime)
+    let hourDownTime = 0
 
     let incidentReasons: string[] = []
 
@@ -43,19 +43,18 @@ export default function DetailBar({
       const incidentStart = incident.start[0]
       const incidentEnd = incident.end ?? currentTime
 
-      const overlap = overlapLen(dayStart, dayEnd, incidentStart, incidentEnd)
-      dayDownTime += overlap
+      const overlap = overlapLen(hourStart, hourEnd, incidentStart, incidentEnd)
+      hourDownTime += overlap
 
-      // Incident history for the day
       if (overlap > 0) {
         for (let i = 0; i < incident.error.length; i++) {
           let partStart = incident.start[i]
           let partEnd =
             i === incident.error.length - 1 ? incident.end ?? currentTime : incident.start[i + 1]
-          partStart = Math.max(partStart, dayStart)
-          partEnd = Math.min(partEnd, dayEnd)
+          partStart = Math.max(partStart, hourStart)
+          partEnd = Math.min(partEnd, hourEnd)
 
-          if (overlapLen(dayStart, dayEnd, partStart, partEnd) > 0) {
+          if (overlapLen(hourStart, hourEnd, partStart, partEnd) > 0) {
             const startStr = new Date(partStart * 1000).toLocaleTimeString([], {
               hour: '2-digit',
               minute: '2-digit',
@@ -70,7 +69,7 @@ export default function DetailBar({
       }
     }
 
-    const dayPercent = (((dayMonitorTime - dayDownTime) / dayMonitorTime) * 100).toPrecision(4)
+    const hourPercent = (((hourMonitorTime - hourDownTime) / hourMonitorTime) * 100).toPrecision(4)
 
     uptimePercentBars.push(
       <Tooltip
@@ -78,15 +77,21 @@ export default function DetailBar({
         key={i}
         events={{ hover: true, focus: false, touch: true }}
         label={
-          Number.isNaN(Number(dayPercent)) ? (
+          Number.isNaN(Number(hourPercent)) ? (
             'No Data'
           ) : (
             <>
-              <div>{dayPercent + '% at ' + new Date(dayStart * 1000).toLocaleDateString()}</div>
-              {dayDownTime > 0 && (
+              <div>
+                {hourPercent}% at{' '}
+                {new Date(hourStart * 1000).toLocaleTimeString([], {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </div>
+              {hourDownTime > 0 && (
                 <div>{`Down for ${moment.preciseDiff(
                   moment(0),
-                  moment(dayDownTime * 1000)
+                  moment(hourDownTime * 1000)
                 )} (click for detail)`}</div>
               )}
             </>
@@ -97,15 +102,18 @@ export default function DetailBar({
           style={{
             height: '20px',
             width: '7px',
-            background: getColor(dayPercent, false),
+            background: getColor(hourPercent, false),
             borderRadius: '2px',
             marginLeft: '1px',
             marginRight: '1px',
           }}
           onClick={() => {
-            if (dayDownTime > 0) {
+            if (hourDownTime > 0) {
               setModalTitle(
-                `🚨 ${monitor.name} incidents at ${new Date(dayStart * 1000).toLocaleDateString()}`
+                `🚨 ${monitor.name} incidents at ${new Date(hourStart * 1000).toLocaleTimeString([], {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}`
               )
               setModelContent(
                 <>
@@ -142,7 +150,7 @@ export default function DetailBar({
         visibleFrom="540"
         ref={barRef}
       >
-        {uptimePercentBars.slice(Math.floor(Math.max(9 * 90 - barRect.width, 0) / 9), 90)}
+        {uptimePercentBars.slice(Math.floor(Math.max(9 * 24 - barRect.width, 0) / 9), 24)}
       </Box>
     </>
   )
