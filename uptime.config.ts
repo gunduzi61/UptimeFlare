@@ -12,7 +12,7 @@ const pageConfig: PageConfig = {
   links: [
     { link: 'https://github.com/lyc8503', label: 'GitHub' },
     { link: 'https://blog.lyc8503.net/', label: 'Blog' },
-    { link: 'mailto:me@lyc8503.net', label: 'Email Me', highlight: true },
+    { link: 'admin@gmal.com', label: 'Email Me', highlight: true },
   ],
 }
 
